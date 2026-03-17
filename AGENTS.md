@@ -10,7 +10,7 @@ These instructions apply to this repository and should be followed by coding age
 
 ## Environment and Tooling
 - Always run ESP-IDF commands from the project directory, unless explicitly needed elsewhere.
-- If no ESP-IDF project is detected in the current folder, create a new project scaffold before continuing.
+- If no ESP-IDF project is detected in the current folder, first locate the correct project root in the workspace. Only create a new project scaffold when the user explicitly asks for a new project or the task clearly requires creating one.
 - Before `idf.py` commands, ensure ESP-IDF environment is loaded (for example, by sourcing the project/user ESP-IDF export script in the shell session).
 - Prefer `idf.py` workflows over calling CMake/Ninja directly.
 - When searching ESP-IDF documentation, always use docs that match the specified ESP-IDF version for the task.
@@ -27,9 +27,10 @@ These instructions apply to this repository and should be followed by coding age
 Notes:
 - Do not assume serial port; detect it or ask the user when required.
 - Default monitor baud is typically `115200` for this project.
-- After changing target with `idf.py set-target`, run `idf.py fullclean` before `idf.py build`.
-- On every interaction that includes a successful build, the agent must also flash and capture monitor logs if a board is detected/connected.
+- After changing target with `idf.py set-target`, run `idf.py fullclean` before `idf.py build` when the cleanup is appropriate for the task and permitted by the safety rules below.
+- When an interaction includes a successful build for firmware-affecting changes and a board is detected/connected, the agent should also flash and capture monitor logs.
   - Required verification flow: `idf.py -p <PORT> flash monitor`
+  - If hardware verification is not relevant to the change, state that it was intentionally skipped.
   - If no board is present, explicitly report that flash/log capture could not be performed.
 
 ## Editing Rules
@@ -53,7 +54,7 @@ Notes:
 
 ## Adding New Components
 - Before creating a new component
-  - Use the ESP Component Registry MCP tools (`search_components`, `fetch_component_detailed_information`) when available — see `SKILL.md` for usage guidance. Fall back to the REST API or the registry website if MCP tools are unavailable.
+  - Search the ESP Component Registry using the public REST API or the registry website to check whether an existing component already fits the need.
 - Before creating a new component, search for the components manifest file inside `main/` (for example `main/idf_component.yml`) and check whether the component should be added there first.
 - If the agent cannot search for components, ask the user to manually add it to the components manifest or share the component link to be added to the manifest file.
 - Use this structure when adding a new component:
@@ -98,13 +99,13 @@ Notes:
 
 ## Validation Checklist (Before Hand-off)
 - Build succeeds with `idf.py build`.
-- If a board is connected, flash and capture runtime logs in the same interaction (`idf.py -p <PORT> flash monitor`).
+- If the change affects firmware behavior and a board is connected, flash and capture runtime logs in the same interaction (`idf.py -p <PORT> flash monitor`).
 - If code behavior changed, provide exact flash/monitor command used for verification.
 - Summarize any configuration changes (especially `sdkconfig`, partition table, or target settings).
 - Report anything not validated (for example, if flashing hardware was not available).
 
 ## Safety and Collaboration
-- Ask before destructive actions (for example: `fullclean`, deleting files, rewriting configs broadly).
+- Ask before destructive actions (for example: `idf.py fullclean`, deleting files, rewriting configs broadly) unless the user explicitly requested that action or these instructions already require it for the task.
 - If unexpected unrelated workspace changes are detected, pause and ask how to proceed.
 - Keep changes narrowly scoped to the user request.
 - Do not hardcode sensitive information in source or config files (for example: SSID, passwords, API keys, certificates, private keys, tokens, or device secrets).

@@ -1,7 +1,7 @@
 ---
 name: esp-idf-skills
 description: ESP32 firmware development skills including build/flash/monitor workflows, EIM CLI setup, ESP-IDF code conventions, and Component Registry API usage.
-compatibility: idf-tools MCP server must be available.
+compatibility: Works with standard ESP-IDF command-line tools.
 ---
 
 # ESP-IDF Firmware Engineering
@@ -18,8 +18,9 @@ This skill provides a structured framework for developing, compiling, and debugg
 ## Instructions
 
 ### 1. Environment & Chip Identification
-- **Check Version First:** Always run `get_idf_version` at the start of a session. ESP-IDF APIs change significantly between versions (e.g., v4.4 vs v5.x).
-- **Targeting:** Before building, use `detect_chip` to identify the hardware. Then call `set_target` with the project path — if you omit the `target` parameter, it will auto-detect the connected chip. If the device is not present, ask the user to connect the device first before flashing.
+- **Load the Environment First:** Before any `idf.py` command, ensure the ESP-IDF environment is loaded in the current shell session.
+- **Check Version First:** Run `idf.py --version` at the start of a session or inspect the exported `IDF_PATH`. ESP-IDF APIs change significantly between versions (e.g., v4.4 vs v5.x).
+- **Targeting:** Use `esptool.py chip_id` to identify the hardware when a device is connected, or use `idf.py set-target <TARGET>` based on confirmed hardware or project context. If the device is not present, ask the user to connect the device first before flashing.
 - **Port Management:** If multiple ESP32s are connected, explicitly ask the user which port to use rather than guessing.
 
 #### 1.1 Extract Target Details from `idf.py` / `esptool.py chip_id`
@@ -51,42 +52,43 @@ This skill provides a structured framework for developing, compiling, and debugg
     - `boot.esp32xx: SPI Mode       : <mode>`
     - `boot.esp32xx: SPI Speed      : <freq>`
 - **From app startup logs (compiled app metadata):**
-  - Look for:
-    - `app_init: Project name: ...`
-    - `app_init: App version: ...`
-    - `app_init: ESP-IDF: ...`
+  - Prefer standard ESP-IDF startup metadata when available, for example:
+    - `I (...) cpu_start: App version: ...`
+    - `I (...) cpu_start: ELF file SHA256: ...`
+    - `I (...) cpu_start: ESP-IDF: ...`
+  - If the project emits custom logs such as `app_init: Project name: ...`, include them as app-specific metadata rather than treating them as required.
 - **Report all four layers together when possible:**
   1. Project target (`idf.py build`)
   2. Physical chip identity (`esptool.py`)
   3. Boot-time hardware config (monitor logs)
-  4. App metadata (`app_init` logs)
+  4. App metadata (standard startup logs and any app-specific metadata)
   - This avoids mismatches between selected target and connected hardware.
 
 ### 2. The Build-Clean Cycle
-- **Incremental Builds:** Use `build_project` for standard changes.
-- **When to Clean:** If the build fails with cryptic CMake errors or after changing major configuration options in `sdkconfig`, use `fullclean` before rebuilding. If fullclean also fails, check if the project path is correct with a valid CMakeLists.txt file, consider removing the build/ folder if needed.
-- **Log Diagnostics:** If a build fails, do not just report the failure. The `build_project` response includes a structured summary with error count, warning count, and specific error locations (file and line). For deep linker/compiler issues, read the build log file path returned in the response.
+- **Incremental Builds:** Use `idf.py build` for standard changes.
+- **When to Clean:** If the build fails with cryptic CMake errors or after changing major configuration options in `sdkconfig`, use `idf.py fullclean` before rebuilding. If cleanup still fails, verify the project path and `CMakeLists.txt` first. Do not delete `build/` or perform other destructive cleanup without user approval.
+- **Log Diagnostics:** If a build fails, do not just report the failure. Inspect the `idf.py build` output and any generated log paths for error count, warning count, and specific error locations.
 - **Mandatory Runtime Verification Per Interaction:** After every successful build in an interaction, if a board is detected, immediately run flash + monitor and capture logs.
   - Required command flow: `idf.py -p <PORT> flash monitor`
   - If no board is connected, explicitly state that flashing/log capture was skipped due to missing hardware.
 
 ### 3. Flashing
-- **Serial Conflict Prevention:** The `flash_firmware` tool automatically handles the connections and flashing, provide the port if necessary.
+- **Serial Conflict Prevention:** Use `idf.py -p <PORT> flash`. Provide the port if necessary.
 
 ### 4. Monitoring & Crash Analysis
-- **Don't Use Raw Serial for Crashes:** Always prefer `monitor_start`. It uses `idf.py monitor` which automatically decodes addresses in backtraces into file names and line numbers.
+- **Don't Use Raw Serial for Crashes:** Use `idf.py -p <PORT> monitor`, which automatically decodes addresses in backtraces into file names and line numbers.
 - **The Monitor Lifecycle:**
-    1. Start with `monitor_start`. The response contains log file path that you can analyse on the go.
-    2. Use `monitor_send` to send commands to firmware that has a console interface or reads from UART.
+    1. Start with `idf.py -p <PORT> monitor` and capture the output in the terminal or a log file for analysis.
+    2. Send commands only if the firmware exposes a UART console and the current terminal setup supports interactive input.
     3. Let the device run until the target behavior/crash is observed.
-    4. Stop with `monitor_stop`. The response includes the log file path for complete analysis.
-- **Real-time Feedback:** Use the `device-log://dut/current` resource to provide the user with snippets of what is happening live without stopping the process.
-- **Ignore "escape sequences not supported" warning:** When monitoring a firmware that uses the ESP-IDF console component (linenoise), the log will contain a message like "Your terminal application does not support escape sequences. Line editing and history features are disabled." This is expected and harmless — This only disables interactive line editing on the device side, which is irrelevant since commands are sent programmatically via `monitor_send`. Do not flag this to the user or treat it as an error.
+    4. Stop the monitor process cleanly and summarize the captured output.
+- **Ignore "escape sequences not supported" warning:** When monitoring a firmware that uses the ESP-IDF console component (linenoise), the log will contain a message like "Your terminal application does not support escape sequences. Line editing and history features are disabled." This is expected and harmless. It only disables terminal-side line editing features and should not be treated as a firmware error.
 
 ## Best Practices
 - **Path Safety:** Always resolve project paths to absolute paths.
 - **Memory Safety:** When memory issues are suspected, enable heap tracing before building and running a monitor session to do memory analysis.
-- **Error Handling:** If `detect_chip` fails, verify the device is in "Download Mode" (usually by holding the BOOT button while resetting).
+- **Error Handling:** If `esptool.py chip_id` fails, verify the device is in "Download Mode" (usually by holding the BOOT button while resetting).
+- **Error Handling:** If `esptool.py chip_id` fails, verify the device is in "Download Mode" (usually by holding the BOOT button while resetting).
 
 ## Install ESP-IDF with EIM CLI
 - Prefer EIM CLI for installing and managing ESP-IDF versions.
@@ -102,7 +104,7 @@ This skill provides a structured framework for developing, compiling, and debugg
   - Run project commands in selected environment: `eim run "idf.py build"`
 - For interactive setup, use: `eim wizard`
 - For reproducible or CI installs, prefer non-interactive mode (default): `eim install ...`
-- If `eim` is unavailable in PATH, run `eim --help` first and fix PATH/installation before continuing.
+- If `eim` is unavailable in `PATH`, fix the installation or shell `PATH` first. Once the binary is discoverable, run `eim --help` to verify the installation before continuing.
 
 ## ESP-IDF Code Conventions
 - Entry point must remain `void app_main(void)`.
@@ -150,7 +152,6 @@ GET /api/components/espressif/esp-dsp   # inspect .examples[] in response
 
 ## Notes
 
-- Prefer MCP tools (`search_components`, `fetch_component_detailed_information`) when available — they return richer parsed output.
-- Fall back to the REST API via `WebFetch` when you need raw example URLs, download links, or fields the MCP tools don't expose.
+- Use the REST API when you need raw example URLs, download links, or component metadata programmatically.
 - If a search returns more than one plausible component, do not choose automatically. Present the candidates and ask the user to select one before proceeding.
 - Components are added to projects with: `idf.py add-dependency "namespace/component^version"`

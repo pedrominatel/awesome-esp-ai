@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ESP-IDF generated files
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+
+# ESP-IDF flashing and build artifacts
+flasher_args.json
+flash_app_args
+flash_args
+flash_args.in
+flash_bootloader_args
+flash_project_args
+partition-table-flash_args
+compile_commands.json
+
+# Logs and temporary files
+*.log
+*.tmp

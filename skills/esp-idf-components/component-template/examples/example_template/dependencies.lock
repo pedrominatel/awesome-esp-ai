@@ -1,0 +1,18 @@
+dependencies:
+  idf:
+    source:
+      type: idf
+    version: 5.5.1
+  template:
+    dependencies:
+    - name: idf
+      version: '>=5.0'
+    source:
+      path: /Users/pedrominatel/Documents/Espressif/github/esp-components/template
+      type: local
+    version: 2.0.0
+direct_dependencies:
+- template
+manifest_hash: 030f6250e4cf66830ec8b76f485da304d1d45ba345460eece05a603e4b6b93eb
+target: esp32c3
+version: 2.0.0

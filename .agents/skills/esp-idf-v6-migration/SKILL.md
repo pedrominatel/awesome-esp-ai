@@ -12,9 +12,10 @@ This skill is optimized for application repos, not standalone reusable component
 
 ## When to Use
 
+- This migration skill is not recommended for projects that are based on older than ESP-IDF v4.4, as the migration path is too complex
 - Migrating an application from ESP-IDF 5.5 to 6.0
 - Migrating an application from 5.4, 5.3, 5.2, 5.1, or 5.0 by chaining intermediate 5.x guides first
-- Migrating an older 4.4 application forward through 5.0 and then cumulatively to 6.0
+- Migrating from 4.4 application forward through 5.0 and then cumulatively to 6.0
 - Triaging build failures after switching the project to ESP-IDF 6.0
 - Auditing API removals, driver moves, toolchain changes, and Kconfig/build-system breakages during migration
 
@@ -46,15 +47,19 @@ This skill is optimized for application repos, not standalone reusable component
 
 - Move the app into an ESP-IDF 6.0 environment before judging compatibility.
 - Confirm Python, CMake, and toolchain requirements before the first build.
+- During the first build on ESP-IDF 6.0, check the log for CMake version warnings before triaging deeper compile failures.
+- If the top-level `CMakeLists.txt` still declares an older minimum, update it to `cmake_minimum_required(VERSION 3.22)` as an early build-system migration step.
 - Prefer running the first build without broad source edits so the failure set reflects real migration blockers.
 
 ### 4. Run an initial build and categorize failures
 
 - Build once on the target ESP-IDF version.
+- Review warnings as well as hard failures during this first build, especially CMake baseline warnings that should be resolved before subsystem-level edits.
 - Group failures before editing:
   - build system or linker
   - GCC or header/toolchain
   - removed or moved components
+  - components not suppoprted
   - driver dependency splits
   - subsystem API changes
   - config and Kconfig syntax issues
@@ -64,6 +69,7 @@ This skill is optimized for application repos, not standalone reusable component
 ### 5. Fix migration issues by subsystem
 
 - Build system:
+  - check CMake version warnings and align the top-level `cmake_minimum_required(...)` with `3.22` when the project still pins an older baseline
   - check orphan section errors
   - check constructor-order assumptions
   - check Kconfig v3 syntax compatibility
@@ -79,6 +85,7 @@ This skill is optimized for application repos, not standalone reusable component
 - Subsystems:
   - review the relevant migration chapters for networking, peripherals, protocols, Wi-Fi, storage, system, security, provisioning, and Bluetooth
   - do not apply mechanical edits outside the subsystem actually implicated by build or runtime evidence
+  - do not edit external components or apply any patches. Patches can only be appied if the user explicitly confirms to do so
 
 ### 6. Rebuild and validate behavior
 

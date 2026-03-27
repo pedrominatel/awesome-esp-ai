@@ -54,13 +54,14 @@ Keep `AGENTS.md` at the repository root for project-wide agent instructions, and
 
 ## Install from GitHub
 
-Clone the repository into a temporary directory and copy the skill you want into `.agents/skills/` inside your target project. Keep `AGENTS.md` at the project root if you want repo-specific agent instructions alongside those reusable skills.
+Clone the repository into a temporary directory and copy the skill you want into `.agents/skills/` inside your target project. Copy `AGENTS.md` to the project root when you want the repository-wide ESP-IDF agent instructions alongside those reusable skills.
 
-Install all skills:
+Install all skills and `AGENTS.md`:
 
 ```sh
 mkdir -p .agents/skills /tmp/awesome-esp-ai && \
 git clone --depth 1 https://github.com/pedrominatel/awesome-esp-ai.git /tmp/awesome-esp-ai && \
+cp /tmp/awesome-esp-ai/AGENTS.md ./AGENTS.md && \
 cp -R /tmp/awesome-esp-ai/.agents/skills/* .agents/skills/ && \
 rm -rf /tmp/awesome-esp-ai
 ```

@@ -51,7 +51,9 @@ Use this file to map a failure symptom to the migration area to inspect next. Op
 
 - ESP-IDF 6.0 raises environment expectations:
   - Python 3.10 or newer
-  - CMake 3.22.1 or newer
+  - CMake 3.22 or newer
+- The first build may warn about an outdated project CMake baseline before compile errors become the main blockers.
+- When that warning appears, align the top-level `cmake_minimum_required(...)` in `CMakeLists.txt` with `3.22` before deeper migration triage.
 - `idf.py size` output format changes can break scripts that parse legacy JSON.
 - `idf.py efuse*` commands now require an explicit serial port.
 - If a CI workflow breaks after the version bump, audit the toolchain and helper command usage before changing application code.

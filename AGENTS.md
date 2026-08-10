@@ -1,127 +1,159 @@
----
-name: esp-idf-agent-instructions
-description: Repository-specific coding agent rules for ESP-IDF projects. Covers environment setup, build/flash workflows, component management, Kconfig conventions, and safety guidelines.
-compatibility: Applies to all coding agents working in this ESP-IDF repository.
----
-
 # ESP-IDF Agent Instructions
 
-These instructions apply to this repository and should be followed by coding agents working on ESP-IDF projects here.
+This file is a reusable baseline for coding agents working in ESP-IDF application
+and component repositories. Follow more specific instructions in the target
+repository when they override this baseline.
 
-## Environment and Tooling
-- Always run ESP-IDF commands from the project directory, unless explicitly needed elsewhere.
-- If no ESP-IDF project is detected in the current folder, first locate the correct project root in the workspace. Only create a new project scaffold when the user explicitly asks for a new project or the task clearly requires creating one.
-- Before `idf.py` commands, ensure ESP-IDF environment is loaded (for example, by sourcing the project/user ESP-IDF export script in the shell session).
-- Prefer `idf.py` workflows over calling CMake/Ninja directly.
-- When searching ESP-IDF documentation, always use docs that match the specified ESP-IDF version for the task.
-- When converting APIs or checking API compatibility, always review the ESP-IDF migration guides for the specified version.
+## Discover the Project First
 
-## Build and Run Commands
+- Locate the ESP-IDF project root before running commands. A project root normally
+  contains a top-level `CMakeLists.txt` with a `project(...)` call.
+- In repositories with multiple applications or test apps, identify the affected
+  project roots and run commands from each relevant root.
+- Read the repository README, CI configuration, top-level `CMakeLists.txt`,
+  `sdkconfig.defaults*`, component manifests, partition tables, and existing build
+  scripts before choosing commands.
+- Determine the required ESP-IDF version, supported targets, board assumptions,
+  and project-specific validation commands. Prefer repository and CI commands over
+  generic commands in this file.
+- If no project is present, do not create a scaffold unless the user requested a
+  new project or the task clearly requires one.
+- When a new project scaffold is required, use
+  `idf.py create-project <PROJECT_NAME>` instead of manually generating the
+  boilerplate files.
+
+## Environment and Documentation
+
+- Ensure the correct ESP-IDF environment is active before using `idf.py`.
+- Prefer EIM CLI for installing and selecting ESP-IDF versions when the repository
+  does not prescribe another setup. Use these commands as needed:
+  - Verify EIM is available: `eim --version`
+  - List installed ESP-IDF versions, their absolute installation paths, and the
+    selected version: `eim list`
+  - Select an installed version: `eim select <ESP_IDF_VERSION>`
+  - Run with the selected version: `eim run "idf.py <command>"`
+  - Run with a specific version without changing the selection:
+    `eim run "idf.py <command>" <ESP_IDF_VERSION>`
+  - Verify a specific ESP-IDF environment before building:
+    `eim run "idf.py --version" <ESP_IDF_VERSION>`
+  - Install a missing version when authorized:
+    `eim install -i <ESP_IDF_VERSION>`
+  - Open the interactive installer when requested: `eim wizard`
+- Use the installation path reported by `eim list` when a task needs `IDF_PATH`
+  or direct access to a matching ESP-IDF checkout. Do not guess installation
+  paths.
+- If the environment is sourced directly, verify that `idf.py --version` matches
+  the version required by the project.
+- Prefer `idf.py` workflows over invoking CMake or Ninja directly.
+- Use ESP-IDF documentation and migration guides matching the project's version
+  and target. Do not rely on `latest` documentation for version-sensitive APIs.
+
+## Standard Commands
+
+- Reconfigure: `idf.py reconfigure`
 - Build: `idf.py build`
-- Clean build artifacts (when needed): `idf.py fullclean`
-- Set/confirm target: `idf.py set-target <TARGET>`
+- Select target: `idf.py set-target <TARGET>`
 - Flash: `idf.py -p <PORT> flash`
-- Serial monitor: `idf.py -p <PORT> monitor`
-- Flash + monitor: `idf.py -p <PORT> flash monitor`
+- Monitor: `idf.py -p <PORT> monitor`
+- Flash and monitor: `idf.py -p <PORT> flash monitor`
 
-Notes:
-- Do not assume serial port; detect it or ask the user when required.
-- Default monitor baud is typically `115200` for this project.
-- After changing target with `idf.py set-target`, run `idf.py fullclean` before `idf.py build` when the cleanup is appropriate for the task and permitted by the safety rules below.
-- When an interaction includes a successful build for firmware-affecting changes and a board is detected/connected, the agent should also flash and capture monitor logs.
-  - Required verification flow: `idf.py -p <PORT> flash monitor`
-  - If hardware verification is not relevant to the change, state that it was intentionally skipped.
-  - If no board is present, explicitly report that flash/log capture could not be performed.
+`idf.py set-target` already clears the build directory, moves the previous
+`sdkconfig` to `sdkconfig.old`, and reconfigures the project. Ask the user before
+running it because it replaces configuration and build state. Do not run a
+redundant `idf.py fullclean` afterward. Use `fullclean` only when stale artifacts
+are a demonstrated problem, and ask before deleting build state.
 
-## Editing Rules
-- Edit source files in `/main/`, `/components/`, and project CMake files as needed.
-- Do not manually edit generated/build outputs under `/build/`.
-- Do not commit transient logs or generated binaries unless the user explicitly asks.
-- Treat `sdkconfig` changes as intentional configuration updates: keep them minimal and explain why they changed.
-- Only edit `sdkconfig` directly when explicitly requested by the user.
-- After any direct `sdkconfig` edit, run `idf.py reconfigure`.
+## Configuration and Generated Files
 
-## Default Configuration Files (`sdkconfig*`) Rules
-- Prefer storing default values in `sdkconfig.defaults` (or target-specific files such as `sdkconfig.defaults.esp32c6`) instead of manually maintaining `sdkconfig`.
-- Treat `sdkconfig` as generated/resolved configuration for the current environment.
-- Only change `sdkconfig` directly when the user explicitly requests a direct edit.
-- When a user asks to change default configuration values, update `sdkconfig.defaults*` first, then run:
-  - `idf.py reconfigure`
-- Keep defaults deterministic and minimal:
-  - add only required keys
-  - avoid unrelated key churn
-  - keep target-specific defaults separated by target file when applicable (for example, `sdkconfig.defaults.esp32c6`)
+- Treat `sdkconfig` as generated configuration. Do not edit it directly unless the
+  user explicitly requests that exact file.
+- Store intentional project defaults in `sdkconfig.defaults` and target-specific
+  overrides in files such as `sdkconfig.defaults.esp32c6`. Keep changes minimal,
+  then ask the user whether to run `idf.py reconfigure`.
+- A target-specific defaults file is used only when the base
+  `sdkconfig.defaults` file also exists; create an empty base file when no common
+  defaults are needed.
+- `Kconfig` and `Kconfig.projbuild` define configuration symbols, prompts,
+  dependencies, and defaults. They do not store the project's selected values.
+- Use component `Kconfig` for component-local options. Use `Kconfig.projbuild`
+  only when an option must appear at project scope.
+- Namespace new symbols, provide a prompt, a sensible default, and useful help
+  text. Put configurable hardware assignments such as GPIOs in Kconfig instead
+  of hardcoding them.
+- After changing `Kconfig` or `Kconfig.projbuild`, ask the user whether to run
+  `idf.py reconfigure` before the next build or validation step.
+- `idf.py build` normally detects Kconfig definition changes and invokes CMake
+  reconfiguration automatically. An explicit `idf.py reconfigure` remains useful
+  for validating configuration separately before a build.
+- Changing a Kconfig default does not necessarily replace a value already stored
+  in `sdkconfig`. When the project's selected value must change, update the
+  appropriate `sdkconfig.defaults*` file and reconfigure with user approval.
+- Never edit files under `build/` or `managed_components/`.
+- Never edit `dependencies.lock` manually. Allow Component Manager to regenerate
+  it, and commit the resulting lock file when the application repository tracks
+  managed dependencies for reproducible builds.
 
-## Adding New Components
-- Before creating a new component
-  - Search the ESP Component Registry using the public REST API or the registry website to check whether an existing component already fits the need.
-- Before creating a new component, search for the components manifest file inside `main/` (for example `main/idf_component.yml`) and check whether the component should be added there first.
-- If the agent cannot search for components, ask the user to manually add it to the components manifest or share the component link to be added to the manifest file.
-- Use this structure when adding a new component:
-  - `components/<component_name>/CMakeLists.txt`
-  - `components/<component_name>/include/<component_name>.h`
-  - `components/<component_name>/<component_name>.c` (and additional source files as needed)
-- Local/private component:
-  - Add it under the project `components/` directory.
-  - Expose public headers through `include/`.
-  - Register sources/includes with `idf_component_register(...)`.
-  - Add `REQUIRES`/`PRIV_REQUIRES` explicitly when depending on other components.
-- Published/reusable component:
-  - Keep component self-contained and ready for registry/reuse.
-  - Include required metadata and docs:
-    - `idf_component.yml`
-    - `README.md`
-    - `LICENSE`
-    - `Kconfig` and/or `Kconfig.projbuild` when configuration options are needed
-  - Include quality/automation assets for CI/CD:
-    - Component-level tests (for example under `test/` or `test_apps/`)
-    - A CI pipeline definition (`.gitlab-ci.yml` or equivalent workflow used by the target repo)
-    - Formatting/lint configuration used by the project
-  - Ensure CI covers at least: build, lint/format checks, and tests for supported ESP-IDF targets.
+## Components and Code Conventions
 
-## Modularity Rules
-- Use components to keep projects modular.
-- Split self-contained functionality (for example: sensor drivers, protocol handlers) into separate ESP-IDF components instead of a single monolithic app to improve reuse and maintenance.
-- If a component is planned to be shared across multiple applications, create it as a standalone project/repository with examples, rather than only inside one app.
+- Before implementing a dependency, search the ESP Component Registry and inspect
+  existing `idf_component.yml` manifests. Prefer adding a suitable managed
+  dependency over duplicating it locally.
+- Add a managed dependency with
+  `idf.py add-dependency "namespace/component^<VERSION>"`. From the project root,
+  this updates the `main` component by default. Use `--component=<NAME>` for a
+  component under `components/` or `--path=<PATH>` for another component
+  directory.
+- Prefer `idf.py create-component <name>` when creating a project-local component.
+  Keep public headers in `include/`, register sources with
+  `idf_component_register(...)`, and declare dependencies explicitly with
+  `REQUIRES` or `PRIV_REQUIRES`.
+- Keep reusable functionality in components rather than a monolithic application.
+  A component intended for publication should be self-contained, documented,
+  licensed, versioned, and tested in one or more test applications.
+- Keep the firmware entry point as `void app_main(void)`.
+- Prefer ESP-IDF APIs and `ESP_LOGI/W/E` for application logging. Handle
+  `esp_err_t` results explicitly and avoid long blocking operations without
+  yielding where appropriate.
 
-## Kconfig.projbuild Rules
-- Use `Kconfig.projbuild` only for project-level menu entries that must appear at the top/project scope in `menuconfig`.
-- Place `Kconfig.projbuild` in the component root: `components/<component_name>/Kconfig.projbuild`.
-- Prefer regular `Kconfig` for component-local options; do not move options to `Kconfig.projbuild` unless project-scope visibility is required.
-- If the user asks to change a project-scope Kconfig value, apply the change in `Kconfig.projbuild`; use component `Kconfig` for component-local values.
-- For HAL definitions, including peripheral GPIO assignments, define values in Kconfig and reference them in code; avoid hardcoding these values directly in source files.
-- Keep option names namespaced (for example: `MY_COMPONENT_*`) to avoid symbol collisions.
-- Every new config option must include:
-  - clear prompt text
-  - sensible default
-  - help text explaining impact and valid values
-- After changing any value in `Kconfig.projbuild`, run `idf.py reconfigure` before build/testing.
+## Validation
 
-## Validation Checklist (Before Hand-off)
-- Build succeeds with `idf.py build`.
-- If the change affects firmware behavior and a board is connected, flash and capture runtime logs in the same interaction (`idf.py -p <PORT> flash monitor`).
-- If code behavior changed, provide exact flash/monitor command used for verification.
-- Summarize any configuration changes (especially `sdkconfig`, partition table, or target settings).
-- Report anything not validated (for example, if flashing hardware was not available).
+- Match validation to the change and follow the repository's CI matrix:
+  - documentation-only changes: run relevant documentation checks
+  - Kconfig changes: ask whether to run `idf.py reconfigure`
+  - manifest or build-system changes: run `idf.py reconfigure`
+  - firmware changes: build every affected supported target that is practical
+  - component changes: build or test the component's relevant test applications
+- Use host-based tests before hardware tests when both cover the behavior.
+- Do not flash merely because a serial device is connected. Flash only when the
+  user requested it or explicitly authorized hardware validation.
+- Before flashing, confirm the port, target, and that the device is safe to
+  overwrite. Never assume a port or monitor baud rate.
+- When authorized hardware validation is required, use the project's documented
+  command, normally `idf.py -p <PORT> flash monitor`, and capture the relevant
+  runtime output.
+- Report the exact commands, ESP-IDF version, target, and tests run. Summarize
+  configuration changes and clearly state anything not validated.
 
 ## Safety and Collaboration
-- Ask before destructive actions (for example: `idf.py fullclean`, deleting files, rewriting configs broadly) unless the user explicitly requested that action or these instructions already require it for the task.
-- If unexpected unrelated workspace changes are detected, pause and ask how to proceed.
-- Keep changes narrowly scoped to the user request.
-- Do not hardcode sensitive information in source or config files (for example: SSID, passwords, API keys, certificates, private keys, tokens, or device secrets).
-- Use placeholders, `sdkconfig`/`sdkconfig.defaults*`, environment variables, or secure provisioning flows instead of committing real secrets.
 
-## Documentation Recommendation
-- Recommend adding a `README.md` for every project and reusable component.
-- At minimum, the README should include:
-  - purpose/overview
-  - build and run/flash instructions
-  - configuration notes (`sdkconfig.defaults*`, target-specific details)
-  - usage examples and dependencies (for reusable components)
-- If the project is hosted on GitHub, recommend adding a `.gitignore` to exclude transient logs, build artifacts, and generated binaries.
+- Keep changes narrowly scoped. If unrelated workspace changes appear, stop and
+  ask how to proceed.
+- Ask before destructive actions such as `fullclean`, deleting files, erasing
+  flash, changing eFuses, or broadly regenerating configuration.
+- Do not commit build outputs, transient logs, generated binaries, or
+  `managed_components/` unless the repository explicitly requires them.
+- Never hardcode or commit SSIDs, passwords, API keys, certificates, private
+  keys, tokens, or device secrets. Use placeholders, configuration, environment
+  variables, or secure provisioning.
+- Review partition size and OTA/rollback implications when changes affect
+  application size, partition tables, or update behavior.
 
-## Additional Recommendations
-- Keep builds reproducible: commit and maintain `dependencies.lock` when using the ESP-IDF Component Manager.
-- Require explicit handling of `esp_err_t` results; avoid ignoring return codes from ESP-IDF APIs.
-- Review partition table and OTA/rollback strategy whenever application size or update flow changes.
-- Define logging policy per build type (more verbose in Debug, reduced in Release).
+## Specialized Guidance
+
+When these files are present, use the relevant workflow:
+
+- Firmware development: `skills/esp-idf/SKILL.md`
+- Component creation and publication:
+  `skills/esp-idf-components/SKILL.md`
+- ESP-IDF 5.x to 6.0 migration:
+  `skills/esp-idf-v6-migration/SKILL.md`

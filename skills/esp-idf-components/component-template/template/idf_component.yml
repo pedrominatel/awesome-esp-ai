@@ -1,0 +1,6 @@
+version: "0.1.0"
+description: "TODO: Describe the component"
+url: "https://github.com/OWNER/REPOSITORY"
+license: "Apache-2.0"
+dependencies:
+  idf: ">=5.0"

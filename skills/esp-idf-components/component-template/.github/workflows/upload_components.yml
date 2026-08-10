@@ -1,0 +1,32 @@
+name: Publish components to ESP Component Registry
+
+on:
+  workflow_dispatch:
+    inputs:
+      components:
+        description: "Component name and relative path"
+        required: true
+        default: "template:template"
+      namespace:
+        description: "ESP Component Registry namespace"
+        required: true
+      dry_run:
+        description: "Validate without publishing"
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload components
+        uses: espressif/upload-components-ci-action@v2
+        with:
+          components: ${{ inputs.components }}
+          namespace: ${{ inputs.namespace }}
+          dry_run: ${{ inputs.dry_run }}

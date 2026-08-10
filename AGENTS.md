@@ -152,8 +152,8 @@ are a demonstrated problem, and ask before deleting build state.
 
 When these files are present, use the relevant workflow:
 
-- Firmware development: `.agents/skills/esp-idf/SKILL.md`
+- Firmware development: `skills/esp-idf/SKILL.md`
 - Component creation and publication:
-  `.agents/skills/esp-idf-components/SKILL.md`
+  `skills/esp-idf-components/SKILL.md`
 - ESP-IDF 5.x to 6.0 migration:
-  `.agents/skills/esp-idf-v6-migration/SKILL.md`
+  `skills/esp-idf-v6-migration/SKILL.md`

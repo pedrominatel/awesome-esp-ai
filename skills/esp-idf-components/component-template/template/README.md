@@ -1,7 +1,5 @@
 # Template Component
 
-[![Component Registry](https://components.espressif.com/components/pedrominatel/template/badge.svg)](https://components.espressif.com/components/pedrominatel/template)
-
 This component is a minimal starter template for ESP-IDF components.
 
 ## File Layout
@@ -42,35 +40,53 @@ esp_err_t ret = template_delete(handle);
 ## Customization Checklist
 
 - Rename the component directory, files, include guards, and exported symbols
+- Replace `YEAR COPYRIGHT HOLDER` in source-file SPDX headers
 - Replace `template_create()` and `template_delete()` with the real lifecycle API
 - Add component-specific configuration structs, enums, and functions as needed
 - Add required dependencies to `CMakeLists.txt`
-- Update `idf_component.yml` description, version, and registry metadata
+- Replace the placeholder URL and update the description, version, license, and
+  ESP-IDF constraint in `idf_component.yml`
 - Expand this README with real hardware, protocol, or usage details
+
+## CI Validation Workflow
+
+`validate_component.yml` builds the example for representative ESP32 and ESP32-C3
+targets on pull requests and pushes to `main`. Adjust the ESP-IDF version and
+target matrix to match the component's declared support.
+
+The example ignores `dependencies.lock` because its local path dependency
+generates a machine-specific absolute path. Applications that use Registry
+dependencies should normally commit their generated lock files.
 
 ## CI Publishing Workflow
 
-This repository publishes components to the Espressif Component Registry through GitHub CI. The workflow runs on every push to `main` and uses the `espressif/upload-components-ci-action@v2` action.
+The included GitHub Actions workflow can publish components to the ESP Component
+Registry with `espressif/upload-components-ci-action@v2`. It runs only when
+manually dispatched and requires explicit component and namespace inputs.
 
 Official documentation:
 - [ESP-IDF Component Manager](https://docs.espressif.com/projects/idf-component-manager/en/latest/index.html)
 
-### Current workflow behavior
+### Workflow behavior
 
-- Trigger: push to `main`
-- Namespace: set by the `namespace` field in `.github/workflows/upload_components.yml`
-- Authentication: configured by the workflow inputs used with `espressif/upload-components-ci-action@v2`
-- Published components: defined by the workflow inputs in `.github/workflows/upload_components.yml`
+- Trigger: manual `workflow_dispatch`
+- Namespace and component paths: supplied as workflow inputs
+- Authentication: GitHub OIDC trusted uploader
+- Dry run: enabled by default; disable it explicitly only for production
+  publication
 - Release requirement: the component `version` in `idf_component.yml` must be incremented for CI to publish a new registry release
 
 ## How To Add A Component To The Registry
 
-1. Make sure the component has a valid `idf_component.yml` with at least `version`, `description`, `url`, and `dependencies.idf`.
+1. Replace every placeholder and make sure the component has a valid
+   `idf_component.yml`.
 2. Increment `version` in `idf_component.yml` before pushing any change that should be published as a new registry release.
-3. Place the component in its own top-level directory in this repository.
-4. Add the component to the workflow inputs in [upload_components.yml](/Users/pedrominatel/Documents/Espressif/github/esp-components/.github/workflows/upload_components.yml) using the format required by `espressif/upload-components-ci-action@v2`.
-5. Commit the component files, manifest version bump, and workflow update to `main`.
-6. Push to `main` so GitHub Actions uploads the component to the registry.
+3. Configure the repository as a trusted uploader for the Registry namespace.
+4. Commit and review the component files and manifest version bump.
+5. Manually run `upload_components.yml` with the intended component path and
+   namespace, leaving `dry_run` enabled first.
+6. Review the dry-run result, then rerun with `dry_run` disabled only when the
+   immutable version is ready to publish.
 
 ### Example
 
@@ -78,9 +94,9 @@ If your component is named `template`, update the workflow configuration so the 
 
 ### Required repository setup
 
-- Configure the workflow inputs required by `espressif/upload-components-ci-action@v2`
-- Set the workflow namespace to the registry namespace you want to publish to
-- Never hardcode `api_token` in the workflow YAML; store it in GitHub Secrets and reference it as `${{ secrets.YOUR_SECRET_NAME }}`
+- Configure an OIDC trusted uploader for the repository and namespace
+- If token authentication is used instead, keep the token in GitHub Secrets and
+  never hardcode it in workflow YAML
 - Keep the component name and path aligned with the actual component folder and metadata
 
 ### Recommended release practice

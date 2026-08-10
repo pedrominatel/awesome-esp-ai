@@ -1,0 +1,26 @@
+name: Validate component
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-example:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - esp32
+          - esp32c3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build example for ${{ matrix.target }}
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.4
+          target: ${{ matrix.target }}
+          path: examples/example_template

@@ -47,6 +47,18 @@ Use this file to map a failure symptom to the migration area to inspect next. Op
 - When the app depends on boot order, constructors, startup hooks, or low-level init flow, review system chapters for each intermediate migration guide.
 - If storage or security failures appear only after boot, do not assume they are unrelated to the version jump.
 
+## Configuration and Managed Dependencies
+
+- Removed or renamed Kconfig symbols can leave stale assumptions in generated
+  `sdkconfig`; keep intentional values in `sdkconfig.defaults*`.
+- Ask before explicit reconfiguration after Kconfig changes.
+- Update component manifests and constraints rather than editing
+  `dependencies.lock` or `managed_components/` manually.
+- Review generated lockfile and configuration diffs for unexpected dependency or
+  default changes.
+- Compare application, bootloader, and partition sizes against the original
+  baseline and verify OTA slot and rollback requirements still hold.
+
 ## Tools and Environment
 
 - ESP-IDF 6.0 raises environment expectations:
